@@ -1,0 +1,42 @@
+lb:
+    image: nginx
+    restart: always
+    ports:
+        - "80:80"
+        - "443:443"
+    volumes:
+        - ./lb/nginx.conf:/etc/nginx/nginx.conf:ro
+        - ./secrets/webserver-key.pem:/secrets/webserver-key.pem:ro
+        - ./secrets/webserver.pem:/secrets/webserver.pem:ro
+        - ./secrets/dhparam.pem:/secrets/dhparam.pem:ro
+
+frontend:
+    build: frontend
+    restart: always
+    env_file:
+        - ./common.env
+    volumes:
+        - ./frontend/templates/frontend.conf:/templates/application.conf:ro
+        - ./frontend/templates/common.conf:/templates/common.conf:ro
+
+wallet:
+    build: frontend
+    restart: always
+    env_file:
+        - ./common.env
+    volumes:
+        - ./frontend/templates/wallet.conf:/templates/application.conf:ro
+        - ./frontend/templates/common.conf:/templates/common.conf:ro
+
+memcached:
+    image: memcached
+    restart: always
+
+db:
+    image: postgres:9.3
+    restart: always
+    volumes:
+        - ./data:/data
+        - ./db:/dbinfo:ro
+    env_file:
+        - ./common.env
