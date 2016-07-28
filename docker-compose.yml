@@ -1,42 +1,90 @@
-lb:
-    image: nginx
-    restart: always
-    ports:
-        - "80:80"
-        - "443:443"
-    volumes:
-        - ./lb/nginx.conf:/etc/nginx/nginx.conf:ro
-        - ./secrets/webserver-key.pem:/secrets/webserver-key.pem:ro
-        - ./secrets/webserver.pem:/secrets/webserver.pem:ro
-        - ./secrets/dhparam.pem:/secrets/dhparam.pem:ro
-
-frontend:
-    build: frontend
-    restart: always
-    env_file:
-        - ./common.env
-    volumes:
-        - ./frontend/templates/frontend.conf:/templates/application.conf:ro
-        - ./frontend/templates/common.conf:/templates/common.conf:ro
-
-wallet:
-    build: frontend
-    restart: always
-    env_file:
-        - ./common.env
-    volumes:
-        - ./frontend/templates/wallet.conf:/templates/application.conf:ro
-        - ./frontend/templates/common.conf:/templates/common.conf:ro
-
-memcached:
-    image: memcached
-    restart: always
-
-db:
-    image: postgres:9.3
-    restart: always
-    volumes:
-        - ./data:/data
-        - ./db:/dbinfo:ro
-    env_file:
-        - ./common.env
+version: '2'
+services:
+    lb:
+        image: nginx
+        restart: unless-stopped
+        networks:
+            txbits:
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - ./lb/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./secrets/webserver-key.pem:/secrets/webserver-key.pem:ro
+            - ./secrets/webserver.pem:/secrets/webserver.pem:ro
+            - ./secrets/dhparam.pem:/secrets/dhparam.pem:ro
+    frontend:
+        build: frontend
+        restart: unless-stopped
+        networks:
+            txbits:
+        env_file:
+            - ./common.env
+        volumes:
+            - ./frontend/templates/frontend.conf:/templates/application.conf:ro
+            - ./frontend/templates/common.conf:/templates/common.conf:ro
+    wallet:
+        build: frontend
+        restart: unless-stopped
+        networks:
+            txbits:
+        env_file:
+            - ./common.env
+        volumes:
+            - ./frontend/templates/wallet.conf:/templates/application.conf:ro
+            - ./frontend/templates/common.conf:/templates/common.conf:ro
+            - ./secrets/bitcoind/spiped_secret:/secrets/bitcoind_spiped_secret:ro
+            - ./secrets/litecoind/spiped_secret:/secrets/litecoind_spiped_secret:ro
+    memcached:
+        image: memcached
+        restart: unless-stopped
+        networks:
+            txbits:
+    db:
+        image: postgres:9.3
+        restart: unless-stopped
+        networks:
+            txbits:
+        volumes:
+            - ./data:/data
+            - ./db:/dbinfo:ro
+        env_file:
+            - ./common.env
+    bitcoind:
+        build:
+            context: coind
+            args:
+                COIND_GIT: https://github.com/bitcoin/bitcoin.git
+                COIND_VERSION: v0.11.0
+                COIND_NAME: bitcoind
+        restart: unless-stopped
+        networks:
+            txbits:
+        env_file:
+            - ./common.env
+            - ./bitcoind.env
+        volumes:
+            - bitcoind_data:/data
+            - ./secrets/bitcoind/spiped_secret:/secrets/spiped_secret:ro
+    litecoind:
+        build:
+            context: coind
+            args:
+                COIND_GIT: https://github.com/litecoin-project/litecoin.git
+                COIND_VERSION: v0.10.2.2
+                COIND_NAME: litecoind
+        restart: unless-stopped
+        networks:
+            txbits:
+        env_file:
+            - ./common.env
+            - ./litecoind.env
+        volumes:
+            - litecoind_data:/data
+            - ./secrets/litecoind/spiped_secret:/secrets/spiped_secret:ro
+networks:
+    txbits:
+        driver: bridge
+volumes:
+    litecoind_data:
+    bitcoind_data:
