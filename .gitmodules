@@ -1,0 +1,9 @@
+[submodule "txbits"]
+	path = txbits
+	url = git@github.com:txbits/txbits.git
+[submodule "bitcoind"]
+	path = bitcoind
+	url = https://github.com/bitcoin/bitcoin.git
+[submodule "litecoind"]
+	path = litecoind
+	url = https://github.com/litecoin-project/litecoin.git
