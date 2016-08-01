@@ -1,1 +1,4 @@
 data
+txbitsdocker/bin
+ivy2-cache
+sbt-cache

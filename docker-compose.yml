@@ -9,32 +9,31 @@ services:
             - "80:80"
             - "443:443"
         volumes:
-            - ./lb/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./txbitsdocker/lb/nginx.conf:/etc/nginx/nginx.conf:ro
             - ./secrets/webserver-key.pem:/secrets/webserver-key.pem:ro
             - ./secrets/webserver.pem:/secrets/webserver.pem:ro
             - ./secrets/dhparam.pem:/secrets/dhparam.pem:ro
     frontend:
-        build: frontend
+        build:
+            context: txbitsdocker
+            dockerfile: frontend/Dockerfile
         restart: unless-stopped
         networks:
             txbits:
         env_file:
             - ./common.env
-        volumes:
-            - ./frontend/templates/frontend.conf:/templates/application.conf:ro
-            - ./frontend/templates/common.conf:/templates/common.conf:ro
     wallet:
-        build: frontend
+        build: 
+            context: txbitsdocker
+            dockerfile: frontend/Dockerfile
         restart: unless-stopped
         networks:
             txbits:
         env_file:
             - ./common.env
-        volumes:
-            - ./frontend/templates/wallet.conf:/templates/application.conf:ro
-            - ./frontend/templates/common.conf:/templates/common.conf:ro
-            - ./secrets/bitcoind/spiped_secret:/secrets/bitcoind_spiped_secret:ro
-            - ./secrets/litecoind/spiped_secret:/secrets/litecoind_spiped_secret:ro
+            - ./wallet.env
+        environment:
+            - IS_WALLET=true
     memcached:
         image: memcached
         restart: unless-stopped
@@ -46,17 +45,15 @@ services:
         networks:
             txbits:
         volumes:
-            - ./data:/data
-            - ./db:/dbinfo:ro
+            - db_data:/data
+            - db_data2:/var/lib/postgresql/data
+            - ./txbitsdocker/db:/dbinfo:ro
         env_file:
             - ./common.env
     bitcoind:
         build:
-            context: coind
-            args:
-                COIND_GIT: https://github.com/bitcoin/bitcoin.git
-                COIND_VERSION: v0.11.0
-                COIND_NAME: bitcoind
+            context: txbitsdocker
+            dockerfile: bitcoind/Dockerfile
         restart: unless-stopped
         networks:
             txbits:
@@ -65,14 +62,10 @@ services:
             - ./bitcoind.env
         volumes:
             - bitcoind_data:/data
-            - ./secrets/bitcoind/spiped_secret:/secrets/spiped_secret:ro
     litecoind:
         build:
-            context: coind
-            args:
-                COIND_GIT: https://github.com/litecoin-project/litecoin.git
-                COIND_VERSION: v0.10.2.2
-                COIND_NAME: litecoind
+            context: txbitsdocker
+            dockerfile: litecoind/Dockerfile
         restart: unless-stopped
         networks:
             txbits:
@@ -81,10 +74,11 @@ services:
             - ./litecoind.env
         volumes:
             - litecoind_data:/data
-            - ./secrets/litecoind/spiped_secret:/secrets/spiped_secret:ro
 networks:
     txbits:
         driver: bridge
 volumes:
     litecoind_data:
     bitcoind_data:
+    db_data:
+    db_data2:
